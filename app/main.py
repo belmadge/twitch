@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.core.config import settings
@@ -8,12 +10,16 @@ from app.domain.bot.router import router as bot_router
 from app.domain.clips.router import router as clips_router
 from app.domain.crm.router import router as crm_router
 
-app = FastAPI(title=settings.app_name)
 
-
-@app.on_event("startup")
-def startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: create tables
     Base.metadata.create_all(bind=engine)
+    yield
+    # Shutdown: cleanup if needed
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 
 @app.get("/")

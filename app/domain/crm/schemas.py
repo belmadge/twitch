@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ViewerEventIn(BaseModel):
@@ -11,8 +11,7 @@ class ViewerOut(BaseModel):
     points: int
     segment: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CampaignCreate(BaseModel):
@@ -29,5 +28,4 @@ class CampaignOut(BaseModel):
     reward_points: int
     message: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

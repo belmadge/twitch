@@ -120,26 +120,22 @@ Acesse:
 
 ---
 
-## Estrutura
+## Testes
 
-```text
-app/
-  core/
-  api/
-  domain/
-    auth/
-    bot/
-    clips/
-    crm/
-    billing/
-  workers/
-  main.py
-
-docs/
-  PROJECT_OBJECTIVES.md
-  RESPONSIBILITIES.md
-
-tests_py/
-  test_objectives.py
-  test_clip_logic.py
+```bash
+pytest
 ```
+
+Testes iniciais cobrem:
+- objetivos das 3 partes no endpoint raiz
+- regra de detecção de pico para clipagem
+
+---
+
+## Nota sobre base anterior
+
+A base TypeScript antiga permanece no repositório como legado de transição.
+A implementação principal recomendada agora é a versão Python em `app/`.
+
+
+.venv\Scripts\uvicorn app.main:app --reload --port 8000
