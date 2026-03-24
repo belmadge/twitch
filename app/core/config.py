@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     twitch_client_id: str = ""
     twitch_client_secret: str = ""
     twitch_redirect_uri: str = ""
-    twitch_bot_username: str = ""
-    twitch_bot_oauth_token: str = ""
 
     database_url: str = "sqlite:///./twitch_saas.db"
     redis_url: str | None = None
