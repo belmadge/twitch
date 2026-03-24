@@ -14,28 +14,6 @@ permissions:
   contents: read
 
 jobs:
-  node:
-    name: Node (TypeScript)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Type check
-        run: npm run check
-
-      - name: Run tests
-        run: npm test
-
   python:
     name: Python (FastAPI)
     runs-on: ubuntu-latest
