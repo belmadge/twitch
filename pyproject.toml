@@ -1,0 +1,37 @@
+[project]
+name = "twitch_creator_saas"
+version = "0.1.0"
+description = "Plataforma Twitch em Python: bot premium + clipagem + CRM"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.2.0",
+  "pydantic-settings>=2.5.0",
+  "python-jose[cryptography]>=3.3.0",
+  "httpx>=0.27.0",
+  "redis>=5.0.8",
+  "rq>=1.16.2",
+  "stripe>=11.0.0",
+  "python-multipart>=0.0.9"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "httpx>=0.27.0",
+  "ruff>=0.6.9"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests_py"]
+
+[tool.ruff]
+line-length = 100
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
