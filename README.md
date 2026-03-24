@@ -1,88 +1,63 @@
-# Twitch Creator SaaS (Python)
+# Twitch Creator SaaS (FastAPI)
 
-Repositório reorganizado em **Python/FastAPI**, com separação clara por domínio e responsabilidade para as 3 partes do produto:
+Projeto em **Python/FastAPI** para creators com 4 domínios:
 
-1. **Bot Premium** (automação de chat)
-2. **Clipagem Automática** (highlights para Shorts/TikTok)
-3. **CRM de Comunidade** (retenção e campanhas)
-
----
-
-## Objetivo do projeto
-
-Transformar livestream em negócio com 3 motores de receita/crescimento:
-
-- **Bot:** monetização por assinatura de automação.
-- **Clips:** geração de conteúdo para aquisição.
-- **CRM:** retenção e reativação para aumentar LTV.
-
-Veja também:
-- `docs/PROJECT_OBJECTIVES.md`
-- `docs/RESPONSIBILITIES.md`
+1. **Auth** (OAuth Twitch + JWT)
+2. **Bot** (comandos e automação)
+3. **Clips** (detecção de highlights)
+4. **CRM** (engajamento e segmentação)
+5. **Billing** (assinatura/checkout)
 
 ---
 
-## Estrutura organizada
+## 1) Registrar o aplicativo na Twitch
 
-```text
-app/
-  core/
-    config.py
-    database.py
-    security.py
-  api/
-    deps.py
-  domain/
-    auth/
-    bot/
-    clips/
-    crm/
-    billing/
-  workers/
-    clip_worker.py
-  main.py
+Antes de rodar o projeto, registre seu app no **Twitch Developer Console**:
 
-docs/
-  PROJECT_OBJECTIVES.md
-  RESPONSIBILITIES.md
+1. Faça login no console da Twitch (com 2FA habilitado na conta).
+2. Crie um novo aplicativo.
+3. Defina a OAuth Redirect URL com o callback da API:
+   - `http://localhost:8000/api/auth/callback`
+4. Após criar, copie:
+   - **Client ID**
+   - **Client Secret**
 
-tests_py/
-  test_objectives.py
-  test_clip_logic.py
+> A URL de callback precisa ser exatamente igual em `TWITCH_REDIRECT_URI` e no console da Twitch.
+
+---
+
+## 2) Configurar variáveis de ambiente
+
+Copie `.env.example` para `.env` e preencha:
+
+```bash
+cp .env.example .env
 ```
 
-Cada domínio possui:
-- `models.py` (persistência)
-- `schemas.py` (contratos)
-- `service.py` (regras de negócio)
-- `router.py` (API)
+Campos obrigatórios para OAuth:
+
+- `TWITCH_CLIENT_ID`
+- `TWITCH_CLIENT_SECRET`
+- `TWITCH_REDIRECT_URI`
+- `JWT_SECRET`
+
+Campos importantes de runtime:
+
+- `APP_ENV`
+- `APP_BASE_URL`
+- `PORT`
+- `DATABASE_URL` (default já aponta para SQLite local)
+
+Campos opcionais:
+
+- `REDIS_URL` (worker assíncrono de clips)
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_PRO`
 
 ---
 
-## Tecnologias
-
-- FastAPI
-- SQLAlchemy
-- PostgreSQL (ou SQLite no dev)
-- JWT (python-jose)
-- Stripe
-- Redis + RQ (worker opcional)
-- Pytest
-
----
-
-## Variáveis de ambiente
-
-Use `.env.example` e ajuste os valores:
-
-- `DATABASE_URL` (sugestão grátis: Supabase/Neon)
-- `REDIS_URL` (sugestão grátis: Upstash)
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`
-- `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, etc.
-
----
-
-## Como rodar
+## 3) Executar o projeto
 
 ```bash
 python -m venv .venv
@@ -92,8 +67,19 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 Acesse:
-- API docs: `http://localhost:8000/docs`
+
+- Docs: `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
+
+---
+
+## 4) Testar OAuth da Twitch
+
+1. Abra `GET /api/auth/twitch-url` no Swagger.
+2. Copie `authorize_url` retornada.
+3. Abra a URL no navegador e autorize o app na Twitch.
+4. A Twitch redirecionará para `TWITCH_REDIRECT_URI` com `?code=...`.
+5. O endpoint `GET /api/auth/callback` troca o `code` por token Twitch e retorna JWT da aplicação.
 
 ---
 
@@ -123,11 +109,14 @@ Acesse:
 
 ---
 
-## Segurança e responsabilidades
+## O que falta para produção (checklist)
 
-- JWT obrigatório para rotas protegidas.
-- Ownership por canal (`require_channel_owner`).
-- Regras de negócio isoladas por domínio (`service.py`).
+- [ ] Preencher `.env` com dados reais da Twitch.
+- [ ] Ajustar `TWITCH_REDIRECT_URI` para domínio de produção.
+- [ ] Configurar banco gerenciado (Postgres) se não quiser SQLite local.
+- [ ] Configurar `REDIS_URL` para processamento assíncrono de clips.
+- [ ] Configurar Stripe para cobrança real.
+- [ ] Implementar integrações externas necessárias (ex.: e-mail/SMS no CRM).
 
 ---
 
