@@ -29,7 +29,7 @@ export async function createCheckoutSession(params: { channelLogin: string; succ
   return session.url;
 }
 
-export async function parseBillingWebhook(signature: string | undefined, payload: Buffer): Promise<Stripe.Event> {
+export async function parseBillingWebhook(signature: string | undefined, payload: Buffer): Promise<{ type: string }> {
   if (!stripe || !config.stripe.webhookSecret) {
     throw new Error("Stripe webhook not configured");
   }

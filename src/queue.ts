@@ -17,7 +17,7 @@ export class QueueManager {
 
       new Worker<ClipJob>(
         "clip-analysis",
-        async (job) => {
+        async (job: { data: ClipJob }) => {
           console.log(`[worker] processando clip ${job.data.clipId} (${job.data.channel}) score=${job.data.score}`);
         },
         { connection }
