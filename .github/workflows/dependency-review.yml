@@ -16,7 +16,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Dependency Review
+        id: dependency_review
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: moderate
           allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0
+
+      - name: Guidance when dependency graph is disabled
+        if: steps.dependency_review.outcome == 'failure'
+        run: |
+          echo "::warning::Dependency Review não é suportado enquanto o Dependency Graph estiver desabilitado."
+          echo "::warning::Habilite em Settings > Security & analysis > Dependency graph e rode novamente."
