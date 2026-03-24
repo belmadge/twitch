@@ -64,7 +64,7 @@ export const clipEngine = {
     const existing = clipsByChannel.get(normalized) ?? [];
     const last = existing[existing.length - 1];
     if (last && at - last.endedAt < 90_000) {
-      return undefined;
+      return last;
     }
 
     const score = Math.round(multiplier * 10 + recentEvents / 2);

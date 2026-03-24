@@ -10,7 +10,6 @@ const requiredKeys = [
   "TWITCH_BOT_OAUTH_TOKEN",
   "PORT",
   "JWT_SECRET"
-  "PORT"
 ] as const;
 
 for (const key of requiredKeys) {

@@ -22,6 +22,11 @@ configureBotRuntime({ db, queue });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const loginStates = new Set<string>();
+
+function loginFromParams(req: express.Request): string {
+  return String(req.params.login ?? "").toLowerCase();
+}
 
 app.use(cookieParser());
 app.post("/webhooks/stripe", rawBodySaver, async (req, res) => {
@@ -35,24 +40,9 @@ app.post("/webhooks/stripe", rawBodySaver, async (req, res) => {
 });
 app.use(express.json());
 app.use("/app", express.static(path.join(__dirname, "..", "public")));
-import express from "express";
-import { config } from "./config.js";
-import { joinChannel } from "./bot.js";
-import { store } from "./store.js";
-import { buildAuthorizeUrl, exchangeCodeForToken, fetchCurrentUser } from "./twitchAuth.js";
-
-const app = express();
-app.use(express.json());
-
-const loginStates = new Set<string>();
 
 app.get("/", (_req, res) => {
   res.redirect("/app");
-  res.type("html").send(`
-    <h1>Twitch Chat Premium SaaS (starter)</h1>
-    <p>Conecte seu canal e crie comandos personalizados para seu bot.</p>
-    <a href="/auth/twitch">Conectar com Twitch</a>
-  `);
 });
 
 app.get("/auth/twitch", (_req, res) => {
@@ -77,7 +67,6 @@ app.get("/auth/callback", async (req, res) => {
     const profile = await fetchCurrentUser(token.accessToken);
 
     const user = {
-    store.upsertUser({
       ...profile,
       accessToken: token.accessToken,
       refreshToken: token.refreshToken,
@@ -86,7 +75,6 @@ app.get("/auth/callback", async (req, res) => {
 
     store.upsertUser(user);
     await db.upsertUser(user);
-
     await joinChannel(profile.login);
 
     const session = createSessionToken({
@@ -102,11 +90,6 @@ app.get("/auth/callback", async (req, res) => {
     });
 
     res.redirect(`/app/dashboard.html?channel=${profile.login.toLowerCase()}`);
-    });
-
-    await joinChannel(profile.login);
-
-    res.redirect(`${config.appBaseUrl}/dashboard/${profile.login}`);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Could not authenticate with Twitch" });
@@ -114,13 +97,12 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 app.get("/api/me", requireAuth, (req, res) => {
-  const session = (req as express.Request & { session?: { twitchLogin: string } }).session;
+  const session = (req as express.Request & { session?: { twitchLogin: string; twitchUserId: string } }).session;
   res.json({ user: session });
 });
 
 app.get("/api/channels/:login/dashboard", requireAuth, requireChannelOwnership, (req, res) => {
-app.get("/dashboard/:login", (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
   const user = store.getUser(login);
 
   if (!user) {
@@ -144,27 +126,7 @@ app.get("/dashboard/:login", (req, res) => {
 });
 
 app.post("/api/channels/:login/commands", requireAuth, requireChannelOwnership, async (req, res) => {
-  const login = req.params.login.toLowerCase();
-    res.status(404).send("Canal não conectado");
-    return;
-  }
-
-  const commands = store.listCommands(login)
-    .map((item) => `<li><code>${item.trigger}</code> → ${item.response}</li>`)
-    .join("");
-
-  res.type("html").send(`
-    <h2>Dashboard: ${user.displayName}</h2>
-    <p>Use o endpoint abaixo para criar comandos premium:</p>
-    <pre>POST /api/channels/${login}/commands</pre>
-    <pre>{ "trigger": "!discord", "response": "Entre no Discord: discord.gg/seulink" }</pre>
-    <h3>Comandos atuais</h3>
-    <ul>${commands || "<li>Nenhum comando configurado.</li>"}</ul>
-  `);
-});
-
-app.post("/api/channels/:login/commands", (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
   const user = store.getUser(login);
 
   if (!user) {
@@ -183,23 +145,22 @@ app.post("/api/channels/:login/commands", (req, res) => {
   const command = { trigger, response };
   store.addCommand(login, command);
   await db.upsertCommand(login, command);
-  store.addCommand(login, { trigger, response });
 
   res.status(201).json({ ok: true, trigger, response });
 });
 
 app.get("/api/channels/:login/clips", requireAuth, requireChannelOwnership, (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
   res.json({ clips: clipEngine.listSuggestions(login) });
 });
 
 app.get("/api/channels/:login/crm/viewers", requireAuth, requireChannelOwnership, (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
   res.json({ viewers: crm.listViewers(login) });
 });
 
 app.post("/api/channels/:login/crm/campaigns", requireAuth, requireChannelOwnership, async (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
 
   const name = String(req.body.name ?? "").trim();
   const segment = String(req.body.segment ?? "").trim() as "new" | "casual" | "core" | "vip";
@@ -218,10 +179,10 @@ app.post("/api/channels/:login/crm/campaigns", requireAuth, requireChannelOwners
 });
 
 app.post("/api/channels/:login/crm/campaigns/:campaignId/apply", requireAuth, requireChannelOwnership, async (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
 
   try {
-    const result = crm.applyCampaign(login, req.params.campaignId);
+    const result = crm.applyCampaign(login, String(req.params.campaignId));
 
     for (const viewer of crm.listViewers(login)) {
       await db.upsertViewer(login, viewer);
@@ -234,7 +195,7 @@ app.post("/api/channels/:login/crm/campaigns/:campaignId/apply", requireAuth, re
 });
 
 app.post("/api/channels/:login/billing/checkout", requireAuth, requireChannelOwnership, async (req, res) => {
-  const login = req.params.login.toLowerCase();
+  const login = loginFromParams(req);
 
   if (!billingEnabled()) {
     res.status(400).json({ error: "Stripe not configured" });
@@ -269,10 +230,4 @@ async function bootstrap(): Promise<void> {
 bootstrap().catch((error) => {
   console.error("Failed to bootstrap app", error);
   process.exit(1);
-app.get("/health", (_req, res) => {
-  res.json({ ok: true });
-});
-
-app.listen(config.port, () => {
-  console.log(`Server running at http://localhost:${config.port}`);
 });
