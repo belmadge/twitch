@@ -147,3 +147,6 @@ Testes iniciais cobrem:
 
 A base TypeScript antiga permanece no repositório como legado de transição.
 A implementação principal recomendada agora é a versão Python em `app/`.
+
+
+.venv\Scripts\uvicorn app.main:app --reload --port 8000
