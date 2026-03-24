@@ -70,6 +70,7 @@ export async function ensureBotConnected(): Promise<void> {
 
     if (trigger === "!comandos") {
       const commands = store.listCommands(cleanChannel);
+      const commands = store.listCommands(channel.replace("#", ""));
       const list = commands.map((item) => item.trigger).join(", ") || "nenhum comando configurado ainda";
       await botClient.say(channel, `Comandos ativos: ${list}`);
       return;
@@ -91,6 +92,10 @@ export async function ensureBotConnected(): Promise<void> {
     const saved = store.findCommand(cleanChannel, trigger);
     if (!saved) return;
 
+    const saved = store.findCommand(channel.replace("#", ""), trigger);
+    if (!saved) return;
+
+    const username = tags["display-name"] ?? tags.username ?? "viewer";
     const parsed = saved.response.replaceAll("{user}", username);
 
     await botClient.say(channel, parsed);

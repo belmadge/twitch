@@ -35,11 +35,24 @@ app.post("/webhooks/stripe", rawBodySaver, async (req, res) => {
 });
 app.use(express.json());
 app.use("/app", express.static(path.join(__dirname, "..", "public")));
+import express from "express";
+import { config } from "./config.js";
+import { joinChannel } from "./bot.js";
+import { store } from "./store.js";
+import { buildAuthorizeUrl, exchangeCodeForToken, fetchCurrentUser } from "./twitchAuth.js";
+
+const app = express();
+app.use(express.json());
 
 const loginStates = new Set<string>();
 
 app.get("/", (_req, res) => {
   res.redirect("/app");
+  res.type("html").send(`
+    <h1>Twitch Chat Premium SaaS (starter)</h1>
+    <p>Conecte seu canal e crie comandos personalizados para seu bot.</p>
+    <a href="/auth/twitch">Conectar com Twitch</a>
+  `);
 });
 
 app.get("/auth/twitch", (_req, res) => {
@@ -64,6 +77,7 @@ app.get("/auth/callback", async (req, res) => {
     const profile = await fetchCurrentUser(token.accessToken);
 
     const user = {
+    store.upsertUser({
       ...profile,
       accessToken: token.accessToken,
       refreshToken: token.refreshToken,
@@ -88,6 +102,11 @@ app.get("/auth/callback", async (req, res) => {
     });
 
     res.redirect(`/app/dashboard.html?channel=${profile.login.toLowerCase()}`);
+    });
+
+    await joinChannel(profile.login);
+
+    res.redirect(`${config.appBaseUrl}/dashboard/${profile.login}`);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Could not authenticate with Twitch" });
@@ -100,6 +119,7 @@ app.get("/api/me", requireAuth, (req, res) => {
 });
 
 app.get("/api/channels/:login/dashboard", requireAuth, requireChannelOwnership, (req, res) => {
+app.get("/dashboard/:login", (req, res) => {
   const login = req.params.login.toLowerCase();
   const user = store.getUser(login);
 
@@ -125,6 +145,32 @@ app.get("/api/channels/:login/dashboard", requireAuth, requireChannelOwnership, 
 
 app.post("/api/channels/:login/commands", requireAuth, requireChannelOwnership, async (req, res) => {
   const login = req.params.login.toLowerCase();
+    res.status(404).send("Canal não conectado");
+    return;
+  }
+
+  const commands = store.listCommands(login)
+    .map((item) => `<li><code>${item.trigger}</code> → ${item.response}</li>`)
+    .join("");
+
+  res.type("html").send(`
+    <h2>Dashboard: ${user.displayName}</h2>
+    <p>Use o endpoint abaixo para criar comandos premium:</p>
+    <pre>POST /api/channels/${login}/commands</pre>
+    <pre>{ "trigger": "!discord", "response": "Entre no Discord: discord.gg/seulink" }</pre>
+    <h3>Comandos atuais</h3>
+    <ul>${commands || "<li>Nenhum comando configurado.</li>"}</ul>
+  `);
+});
+
+app.post("/api/channels/:login/commands", (req, res) => {
+  const login = req.params.login.toLowerCase();
+  const user = store.getUser(login);
+
+  if (!user) {
+    res.status(404).json({ error: "Channel not connected" });
+    return;
+  }
 
   const trigger = String(req.body.trigger ?? "").trim().toLowerCase();
   const response = String(req.body.response ?? "").trim();
@@ -137,6 +183,7 @@ app.post("/api/channels/:login/commands", requireAuth, requireChannelOwnership, 
   const command = { trigger, response };
   store.addCommand(login, command);
   await db.upsertCommand(login, command);
+  store.addCommand(login, { trigger, response });
 
   res.status(201).json({ ok: true, trigger, response });
 });
@@ -222,4 +269,10 @@ async function bootstrap(): Promise<void> {
 bootstrap().catch((error) => {
   console.error("Failed to bootstrap app", error);
   process.exit(1);
+app.get("/health", (_req, res) => {
+  res.json({ ok: true });
+});
+
+app.listen(config.port, () => {
+  console.log(`Server running at http://localhost:${config.port}`);
 });
