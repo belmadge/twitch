@@ -4,8 +4,6 @@ import { config } from "./config.js";
 import { joinChannel } from "./bot.js";
 import { store } from "./store.js";
 import { buildAuthorizeUrl, exchangeCodeForToken, fetchCurrentUser } from "./twitchAuth.js";
-import { clipEngine } from "./clipEngine.js";
-import { crm } from "./crm.js";
 
 const app = express();
 app.use(express.json());
@@ -15,7 +13,7 @@ const loginStates = new Set<string>();
 app.get("/", (_req, res) => {
   res.type("html").send(`
     <h1>Twitch Chat Premium SaaS (starter)</h1>
-    <p>Conecte seu canal e use automação + clipagem inteligente + CRM de comunidade.</p>
+    <p>Conecte seu canal e crie comandos personalizados para seu bot.</p>
     <a href="/auth/twitch">Conectar com Twitch</a>
   `);
 });
@@ -70,9 +68,6 @@ app.get("/dashboard/:login", (req, res) => {
     .map((item) => `<li><code>${item.trigger}</code> → ${item.response}</li>`)
     .join("");
 
-  const clipCount = clipEngine.listSuggestions(login).length;
-  const viewersCount = crm.listViewers(login).length;
-
   res.type("html").send(`
     <h2>Dashboard: ${user.displayName}</h2>
     <p>Use o endpoint abaixo para criar comandos premium:</p>
@@ -80,15 +75,6 @@ app.get("/dashboard/:login", (req, res) => {
     <pre>{ "trigger": "!discord", "response": "Entre no Discord: discord.gg/seulink" }</pre>
     <h3>Comandos atuais</h3>
     <ul>${commands || "<li>Nenhum comando configurado.</li>"}</ul>
-
-    <h3>Clipagem automática</h3>
-    <p>Sugestões geradas: <strong>${clipCount}</strong></p>
-    <pre>GET /api/channels/${login}/clips</pre>
-
-    <h3>CRM de comunidade</h3>
-    <p>Viewers mapeados: <strong>${viewersCount}</strong></p>
-    <pre>GET /api/channels/${login}/crm/viewers</pre>
-    <pre>POST /api/channels/${login}/crm/campaigns</pre>
   `);
 });
 
@@ -112,77 +98,6 @@ app.post("/api/channels/:login/commands", (req, res) => {
   store.addCommand(login, { trigger, response });
 
   res.status(201).json({ ok: true, trigger, response });
-});
-
-app.get("/api/channels/:login/clips", (req, res) => {
-  const login = req.params.login.toLowerCase();
-  const user = store.getUser(login);
-
-  if (!user) {
-    res.status(404).json({ error: "Channel not connected" });
-    return;
-  }
-
-  res.json({ clips: clipEngine.listSuggestions(login) });
-});
-
-app.get("/api/channels/:login/crm/viewers", (req, res) => {
-  const login = req.params.login.toLowerCase();
-  const user = store.getUser(login);
-
-  if (!user) {
-    res.status(404).json({ error: "Channel not connected" });
-    return;
-  }
-
-  res.json({ viewers: crm.listViewers(login) });
-});
-
-app.post("/api/channels/:login/crm/campaigns", (req, res) => {
-  const login = req.params.login.toLowerCase();
-  const user = store.getUser(login);
-
-  if (!user) {
-    res.status(404).json({ error: "Channel not connected" });
-    return;
-  }
-
-  const name = String(req.body.name ?? "").trim();
-  const segment = String(req.body.segment ?? "").trim() as "new" | "casual" | "core" | "vip";
-  const rewardPoints = Number(req.body.rewardPoints ?? 0);
-  const message = String(req.body.message ?? "").trim();
-
-  if (!name || !["new", "casual", "core", "vip"].includes(segment) || rewardPoints <= 0 || !message) {
-    res.status(400).json({ error: "Invalid campaign payload" });
-    return;
-  }
-
-  const campaign = crm.createCampaign({
-    channel: login,
-    name,
-    segment,
-    rewardPoints,
-    message
-  });
-
-  res.status(201).json({ campaign });
-});
-
-app.post("/api/channels/:login/crm/campaigns/:campaignId/apply", (req, res) => {
-  const login = req.params.login.toLowerCase();
-  const user = store.getUser(login);
-
-  if (!user) {
-    res.status(404).json({ error: "Channel not connected" });
-    return;
-  }
-
-  try {
-    const result = crm.applyCampaign(login, req.params.campaignId);
-    res.json({ ok: true, ...result });
-  } catch (error) {
-    res.status(404).json({ error: (error as Error).message });
-  }
 });
 
 app.get("/health", (_req, res) => {

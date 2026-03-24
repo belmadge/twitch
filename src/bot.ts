@@ -1,8 +1,6 @@
 import tmi from "tmi.js";
 import { config } from "./config.js";
 import { store } from "./store.js";
-import { clipEngine } from "./clipEngine.js";
-import { crm } from "./crm.js";
 
 type ManagedChannel = {
   channel: string;
@@ -31,45 +29,20 @@ export async function ensureBotConnected(): Promise<void> {
   botClient.on("message", async (channel, tags, message, self) => {
     if (self) return;
 
-    const cleanChannel = channel.replace("#", "");
-    const username = tags["display-name"] ?? tags.username ?? "viewer";
-
-    crm.registerMessage(cleanChannel, username);
-    const clip = clipEngine.recordEvent(cleanChannel, { type: "message", username });
-
-    if (clip && clip.score >= 35) {
-      await botClient.say(
-        channel,
-        `🔥 Pico detectado! Sugestão de clip criada (${clip.score} pts). Veja no dashboard de clips.`
-      );
-    }
-
     const trigger = message.trim().split(" ")[0]?.toLowerCase();
     if (!trigger?.startsWith("!")) return;
 
     if (trigger === "!comandos") {
-      const commands = store.listCommands(cleanChannel);
+      const commands = store.listCommands(channel.replace("#", ""));
       const list = commands.map((item) => item.trigger).join(", ") || "nenhum comando configurado ainda";
       await botClient.say(channel, `Comandos ativos: ${list}`);
       return;
     }
 
-    if (trigger === "!ranking") {
-      const ranking = crm.listViewers(cleanChannel).slice(0, 3);
-      if (!ranking.length) {
-        await botClient.say(channel, "Ainda não há dados de ranking.");
-        return;
-      }
-      const formatted = ranking
-        .map((viewer, index) => `${index + 1}. ${viewer.username} (${viewer.points} pts)`)
-        .join(" | ");
-      await botClient.say(channel, `🏆 Top comunidade: ${formatted}`);
-      return;
-    }
-
-    const saved = store.findCommand(cleanChannel, trigger);
+    const saved = store.findCommand(channel.replace("#", ""), trigger);
     if (!saved) return;
 
+    const username = tags["display-name"] ?? tags.username ?? "viewer";
     const parsed = saved.response.replaceAll("{user}", username);
 
     await botClient.say(channel, parsed);
