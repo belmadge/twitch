@@ -1,0 +1,40 @@
+from fastapi import FastAPI
+
+from app.core.config import settings
+from app.core.database import Base, engine
+from app.domain.auth.router import router as auth_router
+from app.domain.billing.router import router as billing_router
+from app.domain.bot.router import router as bot_router
+from app.domain.clips.router import router as clips_router
+from app.domain.crm.router import router as crm_router
+
+app = FastAPI(title=settings.app_name)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    Base.metadata.create_all(bind=engine)
+
+
+@app.get("/")
+def root():
+    return {
+        "project": settings.app_name,
+        "objectives": {
+            "bot": "Automação premium de chat para streamers",
+            "clips": "Detecção de highlights para conteúdo curto",
+            "crm": "Retenção e engajamento com segmentação de comunidade",
+        },
+    }
+
+
+@app.get("/health")
+def health():
+    return {"ok": True, "env": settings.app_env}
+
+
+app.include_router(auth_router, prefix="/api")
+app.include_router(bot_router, prefix="/api")
+app.include_router(clips_router, prefix="/api")
+app.include_router(crm_router, prefix="/api")
+app.include_router(billing_router, prefix="/api")
