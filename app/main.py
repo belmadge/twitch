@@ -30,6 +30,7 @@ def root():
             "bot": "Automação premium de chat para streamers",
             "clips": "Detecção de highlights para conteúdo curto",
             "crm": "Retenção e engajamento com segmentação de comunidade",
+            "safety": "Sinalização de usuários com comportamento ofensivo recorrente",
         },
     }
 
