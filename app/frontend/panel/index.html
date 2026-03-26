@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Twitch Creator SaaS Panel</title>
+    <link rel="stylesheet" href="/frontend/panel/styles.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header class="panel__header">
+        <p class="eyebrow">Extensão de Painel Twitch</p>
+        <h1>Comunidade VIP</h1>
+        <p class="subtitle">Pontuação ao vivo, campanhas e segurança para o chat.</p>
+      </header>
+
+      <section class="card">
+        <h2>Seu nível</h2>
+        <p id="viewer-level" class="big">Carregando...</p>
+        <p id="viewer-points" class="muted">Sincronizando pontos...</p>
+      </section>
+
+      <section class="card">
+        <h2>Campanha ativa</h2>
+        <p id="campaign-name">Desafio da semana</p>
+        <progress id="campaign-progress" max="100" value="42"></progress>
+        <small id="campaign-progress-text" class="muted">42% concluído</small>
+      </section>
+
+      <section class="card card--cta">
+        <h2>Benefício Pro</h2>
+        <p>Apoie o canal e desbloqueie comandos premium.</p>
+        <button id="checkout-btn" type="button">Ativar Pro</button>
+      </section>
+
+      <p class="footnote">Template pronto para Twitch Extensions (Panel). Configure as variáveis no backend e publique no Developer Console.</p>
+    </main>
+
+    <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+    <script src="/frontend/panel/app.js" type="module"></script>
+  </body>
+</html>
