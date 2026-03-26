@@ -22,3 +22,15 @@ class BillingService:
             metadata={"channel_login": channel_login},
         )
         return session.url
+
+    def parse_webhook_event(self, payload: bytes, signature: str | None):
+        if not settings.stripe_webhook_secret:
+            raise ValueError("Stripe webhook secret not configured")
+        if not signature:
+            raise ValueError("Missing Stripe-Signature header")
+
+        return stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=signature,
+            secret=settings.stripe_webhook_secret,
+        )
