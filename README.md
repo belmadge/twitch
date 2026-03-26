@@ -46,6 +46,8 @@ Campos importantes de runtime:
 - `APP_ENV`
 - `APP_BASE_URL`
 - `PORT`
+- `CORS_ORIGINS` (origens permitidas do front-end)
+- `ALLOWED_HOSTS` (hosts válidos para evitar Host Header Injection)
 - `DATABASE_URL` (default já aponta para SQLite local)
 
 Campos opcionais:
@@ -87,7 +89,7 @@ Acesse:
 
 ### Auth
 - `GET /api/auth/twitch-url`
-- `GET /api/auth/callback?code=...`
+- `GET /api/auth/callback?code=...&state=...`
 
 ### Bot
 - `GET /api/bot/{channel_login}/commands`
@@ -117,6 +119,18 @@ Acesse:
 - [ ] Configurar `REDIS_URL` para processamento assíncrono de clips.
 - [ ] Configurar Stripe para cobrança real.
 - [ ] Implementar integrações externas necessárias (ex.: e-mail/SMS no CRM).
+
+## Segurança já aplicada nesta base
+
+- Validação de `state` de OAuth assinado com expiração curta (anti-CSRF no callback).
+- CORS configurável por variável de ambiente.
+- Validação de host confiável (`ALLOWED_HOSTS`).
+- Security headers HTTP padrão (`X-Frame-Options`, `CSP`, `nosniff`, etc).
+
+## Front-end
+
+Este repositório contém o **back-end FastAPI** e persistência (SQLite/Postgres).
+Se você quiser front-end pronto, precisa plugar um cliente (ex.: Next.js/Vite) consumindo os endpoints de `/api`.
 
 ---
 
