@@ -1,47 +1,112 @@
 # Twitch Creator SaaS (FastAPI)
 
-Projeto em **Python/FastAPI** para creators com 4 domínios:
+Projeto em **Python/FastAPI** para creators com 5 módulos de produto:
 
-1. **Auth** (OAuth Twitch + JWT)
+1. **Auth** (OAuth Twitch + JWT da aplicação)
 2. **Bot** (comandos e automação)
 3. **Clips** (detecção de highlights)
 4. **CRM** (engajamento e segmentação)
-5. **Billing** (assinatura/checkout)
+5. **Billing** (Stripe checkout + webhook)
 
 ---
 
-## 1) Registrar o aplicativo na Twitch
+## Você consegue ganhar dinheiro com esse projeto?
 
-Antes de rodar o projeto, registre seu app no **Twitch Developer Console**:
+**Sim, consegue** — desde que você trate este app como um **SaaS B2B para streamers**, com foco em recorrência mensal.
 
-1. Faça login no console da Twitch (com 2FA habilitado na conta).
-2. Crie um novo aplicativo.
-3. Defina a OAuth Redirect URL com o callback da API:
-   - `http://localhost:8000/api/auth/callback`
-4. Após criar, copie:
-   - **Client ID**
-   - **Client Secret**
+### Modelo de monetização recomendado
 
-> A URL de callback precisa ser exatamente igual em `TWITCH_REDIRECT_URI` e no console da Twitch.
+- **Plano Free**
+  - limite de comandos do bot
+  - limite de highlights por semana
+  - sem campanhas avançadas de CRM
+- **Plano Pro (mensal/anual)**
+  - comandos ilimitados
+  - clipagem com prioridade
+  - segmentação e campanhas completas
+  - suporte prioritário
+- **Add-ons**
+  - pacote extra de processamento de clips
+  - onboarding/consultoria para streamers maiores
+
+### Métricas mínimas para validar negócio
+
+- Conversão Free → Pro (%).
+- Churn mensal (%).
+- ARPU (receita média por usuário pagante).
+- Tempo para “primeiro valor” (cadastro até primeiro resultado útil).
 
 ---
 
-## 2) Configurar variáveis de ambiente
+## Esse app “passa” para uso na Twitch Developer?
 
-Copie `.env.example` para `.env` e preencha:
+A Twitch normalmente avalia se o app:
+
+- usa OAuth corretamente,
+- pede apenas os escopos necessários,
+- tem política de privacidade e termos,
+- respeita segurança e identidade visual,
+- não viola regras de spam/abuso.
+
+Este backend já tem uma base boa (OAuth, state assinado, CORS, host allowlist, checkout Stripe), mas para ficar **“pronto para painel/publicação”** você ainda precisa concluir os itens de produção da checklist abaixo.
+
+> Importante: este repositório é backend. Para um “painel” público, você também precisa de front-end (landing, dashboard, pricing, login e telas de consentimento).
+
+---
+
+## Arquitetura resumida
+
+- API FastAPI em `app/main.py`
+- Domínios:
+  - `app/domain/auth`
+  - `app/domain/bot`
+  - `app/domain/clips`
+  - `app/domain/crm`
+  - `app/domain/billing`
+- Banco padrão: SQLite local (produção recomendada: Postgres)
+- Fila opcional para clips: Redis + worker
+
+---
+
+## 1) Pré-requisitos
+
+- Python 3.11+
+- Conta Twitch com 2FA habilitado
+- Conta Stripe
+- (Produção) Postgres gerenciado + Redis gerenciado
+
+---
+
+## 2) Registrar o app na Twitch Developer Console
+
+1. Acesse o console da Twitch e crie um app.
+2. Defina OAuth Redirect URL:
+   - `http://localhost:8000/api/auth/callback` (dev)
+   - `https://SEU_DOMINIO/api/auth/callback` (prod)
+3. Copie:
+   - `Client ID`
+   - `Client Secret`
+
+> A callback precisa ser idêntica no console e em `TWITCH_REDIRECT_URI`.
+
+---
+
+## 3) Configurar ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-Campos obrigatórios para OAuth:
+Preencha no `.env`:
+
+### Obrigatórios (OAuth + segurança)
 
 - `TWITCH_CLIENT_ID`
 - `TWITCH_CLIENT_SECRET`
 - `TWITCH_REDIRECT_URI`
-- `JWT_SECRET`
+- `JWT_SECRET` (forte, aleatório)
 
-Campos importantes de runtime:
+### Obrigatórios para deploy
 
 - `APP_ENV`
 - `APP_BASE_URL`
@@ -49,17 +114,25 @@ Campos importantes de runtime:
 - `CORS_ORIGINS` (origens permitidas do front-end)
 - `ALLOWED_HOSTS` (hosts válidos para evitar Host Header Injection)
 - `DATABASE_URL` (default já aponta para SQLite local)
+- `APP_ENV=production`
+- `APP_BASE_URL=https://SEU_DOMINIO`
+- `CORS_ORIGINS` com seus domínios reais
+- `ALLOWED_HOSTS` com seus hosts reais
+- `DATABASE_URL` (Postgres recomendado)
 
-Campos opcionais:
+### Billing (para monetizar)
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRICE_PRO`
+- `STRIPE_WEBHOOK_SECRET`
+
+### Opcionais
 
 - `REDIS_URL` (worker assíncrono de clips)
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_PRO`
 
 ---
 
-## 3) Executar o projeto
+## 4) Rodar localmente
 
 ```bash
 python -m venv .venv
@@ -76,13 +149,71 @@ Acesse:
 
 ---
 
-## 4) Testar OAuth da Twitch
+## 5) Fluxo OAuth (teste rápido)
 
-1. Abra `GET /api/auth/twitch-url` no Swagger.
-2. Copie `authorize_url` retornada.
-3. Abra a URL no navegador e autorize o app na Twitch.
-4. A Twitch redirecionará para `TWITCH_REDIRECT_URI` com `?code=...`.
-5. O endpoint `GET /api/auth/callback` troca o `code` por token Twitch e retorna JWT da aplicação.
+1. `GET /api/auth/twitch-url`
+2. Abra `authorize_url`
+3. Autorize na Twitch
+4. Twitch redireciona para callback com `?code=...&state=...`
+5. `GET /api/auth/callback` retorna JWT da aplicação
+
+---
+
+## 6) Fluxo de monetização Stripe
+
+### Status da cobrança
+
+- `GET /api/billing/status` → mostra se Stripe está habilitado
+
+### Criar checkout
+
+- `POST /api/billing/{channel_login}/checkout` com Bearer token do dono do canal
+
+### Webhook Stripe (novo)
+
+- `POST /api/billing/webhook`
+- Valida assinatura via `Stripe-Signature` + `STRIPE_WEBHOOK_SECRET`
+- Retorna `event_type` recebido
+
+#### Testar webhook localmente
+
+```bash
+stripe listen --forward-to localhost:8000/api/billing/webhook
+```
+
+Depois dispare eventos de teste no Stripe CLI.
+
+---
+
+## 7) Checklist para ficar “pronto para vender”
+
+### Produto
+
+- [ ] Definir planos (Free, Pro, anual) com limites claros.
+- [ ] Criar onboarding curto até primeiro valor (comando bot + 1 clip + 1 campanha CRM).
+- [ ] Implementar dashboard de uso e consumo por plano.
+
+### Técnico
+
+- [ ] Migrar SQLite para Postgres em produção.
+- [ ] Adicionar migrations (Alembic) e rotina de backup.
+- [ ] Persistir estado de assinatura (customer/subscription/status/period_end).
+- [ ] Processar eventos críticos do webhook (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`).
+- [ ] Rate limit e auditoria de segurança.
+- [ ] Observabilidade (logs estruturados + erro + métricas).
+
+### Compliance e confiança
+
+- [ ] Publicar **Política de Privacidade**.
+- [ ] Publicar **Termos de Uso**.
+- [ ] Definir e-mail de suporte e página de contato.
+- [ ] Documentar retenção e exclusão de dados.
+
+### Go-to-market
+
+- [ ] Landing page com proposta de valor e pricing.
+- [ ] Stripe Customer Portal para autoatendimento de assinatura.
+- [ ] Funil de aquisição (conteúdo, creators parceiros, afiliados).
 
 ---
 
@@ -109,17 +240,16 @@ Acesse:
 ### Billing
 - `GET /api/billing/status`
 - `POST /api/billing/{channel_login}/checkout`
+- `POST /api/billing/webhook`
 
 ---
 
-## O que falta para produção (checklist)
+## Segurança já aplicada na base
 
-- [ ] Preencher `.env` com dados reais da Twitch.
-- [ ] Ajustar `TWITCH_REDIRECT_URI` para domínio de produção.
-- [ ] Configurar banco gerenciado (Postgres) se não quiser SQLite local.
-- [ ] Configurar `REDIS_URL` para processamento assíncrono de clips.
-- [ ] Configurar Stripe para cobrança real.
-- [ ] Implementar integrações externas necessárias (ex.: e-mail/SMS no CRM).
+- OAuth state assinado e com expiração curta (anti-CSRF)
+- CORS configurável por ambiente
+- Trusted hosts (`ALLOWED_HOSTS`)
+- Security headers (`nosniff`, `X-Frame-Options`, CSP etc.)
 
 ## Segurança já aplicada nesta base
 
@@ -151,16 +281,19 @@ Nesta base já existe um front-end inicial em `app/frontend/panel/` para você u
 pytest
 ```
 
-Testes iniciais cobrem:
-- objetivos das 3 partes no endpoint raiz
-- regra de detecção de pico para clipagem
+Cobertura inicial:
+
+- objetivos no endpoint raiz
+- lógica de detecção de pico para clipagem
 
 ---
 
-## Nota sobre base anterior
-
-A base TypeScript antiga permanece no repositório como legado de transição.
-A implementação principal recomendada agora é a versão Python em `app/`.
-
+## Próximos passos recomendados (ordem prática)
 
 .venv\Scripts\uvicorn app.main:app --reload --port 8000
+1. Subir backend em produção com domínio e TLS.
+2. Integrar front-end de dashboard/painel.
+3. Concluir persistência de assinatura por webhook.
+4. Publicar termos/privacidade.
+5. Rodar beta fechado com 10–20 streamers.
+6. Ajustar pricing conforme retenção e churn.
