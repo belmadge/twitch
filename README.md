@@ -297,3 +297,17 @@ Cobertura inicial:
 4. Publicar termos/privacidade.
 5. Rodar beta fechado com 10–20 streamers.
 6. Ajustar pricing conforme retenção e churn.
+
+
+
+No PowerShell (Windows), do diretório do projeto:
+
+1. Active o venv:
+   - `.venv\Scripts\Activate`
+2. Instale dependências (se necessário):
+   - `pip install -e .[dev]`
+3. Inicie o servidor:
+   - `.venv\Scripts\uvicorn app.main:app --reload --port 8000`
+4. Pare o servidor (Ctrl+C) ou:
+   - `Get-Process uvicorn -ErrorAction SilentlyContinue | Stop-Process -Force`
+   - `Get-Process python -ErrorAction SilentlyContinue | Where-Object {$_.Path -like '*uvicorn*'} | Stop-Process -Force`
