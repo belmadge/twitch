@@ -108,6 +108,12 @@ Preencha no `.env`:
 
 ### Obrigatórios para deploy
 
+- `APP_ENV`
+- `APP_BASE_URL`
+- `PORT`
+- `CORS_ORIGINS` (origens permitidas do front-end)
+- `ALLOWED_HOSTS` (hosts válidos para evitar Host Header Injection)
+- `DATABASE_URL` (default já aponta para SQLite local)
 - `APP_ENV=production`
 - `APP_BASE_URL=https://SEU_DOMINIO`
 - `CORS_ORIGINS` com seus domínios reais
@@ -139,6 +145,7 @@ Acesse:
 
 - Docs: `http://localhost:8000/docs`
 - Health: `http://localhost:8000/health`
+- Front-end demo (Twitch Panel): `http://localhost:8000/frontend/panel/index.html`
 
 ---
 
@@ -244,6 +251,28 @@ Depois dispare eventos de teste no Stripe CLI.
 - Trusted hosts (`ALLOWED_HOSTS`)
 - Security headers (`nosniff`, `X-Frame-Options`, CSP etc.)
 
+## Segurança já aplicada nesta base
+
+- Validação de `state` de OAuth assinado com expiração curta (anti-CSRF no callback).
+- CORS configurável por variável de ambiente.
+- Validação de host confiável (`ALLOWED_HOSTS`).
+- Security headers HTTP padrão (`X-Frame-Options`, `CSP`, `nosniff`, etc).
+
+## Front-end
+
+Este repositório contém o **back-end FastAPI** e persistência (SQLite/Postgres).
+Se você quiser front-end pronto, precisa plugar um cliente (ex.: Next.js/Vite) consumindo os endpoints de `/api`.
+
+### Recomendação para Twitch Developer Console
+
+Para este produto (bot + CRM + benefícios + billing), o melhor ponto de partida é **Twitch Extension do tipo Panel**:
+
+- aparece abaixo da live e é simples de adotar;
+- ótimo para CTA de assinatura/pro e campanhas;
+- integra bem com dados de viewer sem exigir app externo completo.
+
+Nesta base já existe um front-end inicial em `app/frontend/panel/` para você usar como template de publicação.
+
 ---
 
 ## Testes
@@ -261,6 +290,7 @@ Cobertura inicial:
 
 ## Próximos passos recomendados (ordem prática)
 
+.venv\Scripts\uvicorn app.main:app --reload --port 8000
 1. Subir backend em produção com domínio e TLS.
 2. Integrar front-end de dashboard/painel.
 3. Concluir persistência de assinatura por webhook.
