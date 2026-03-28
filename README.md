@@ -250,13 +250,7 @@ Depois dispare eventos de teste no Stripe CLI.
 - CORS configurável por ambiente
 - Trusted hosts (`ALLOWED_HOSTS`)
 - Security headers (`nosniff`, `X-Frame-Options`, CSP etc.)
-
-## Segurança já aplicada nesta base
-
-- Validação de `state` de OAuth assinado com expiração curta (anti-CSRF no callback).
-- CORS configurável por variável de ambiente.
-- Validação de host confiável (`ALLOWED_HOSTS`).
-- Security headers HTTP padrão (`X-Frame-Options`, `CSP`, `nosniff`, etc).
+- Endpoints de escrita sensíveis em clips/CRM protegidos por Bearer token do dono do canal.
 
 ## Front-end
 
@@ -289,8 +283,6 @@ Cobertura inicial:
 ---
 
 ## Próximos passos recomendados (ordem prática)
-
-.venv\Scripts\uvicorn app.main:app --reload --port 8000
 1. Subir backend em produção com domínio e TLS.
 2. Integrar front-end de dashboard/painel.
 3. Concluir persistência de assinatura por webhook.
