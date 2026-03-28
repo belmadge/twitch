@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_channel_owner
+from fastapi import HTTPException, status
+
+from app.api.deps import current_user, require_channel_owner
 from app.core.database import get_db
 from app.domain.clips.schemas import ClipEventIn, ClipSuggestionOut
 from app.domain.clips.service import ClipService
@@ -11,7 +13,9 @@ service = ClipService()
 
 
 @router.post("/detect", response_model=ClipSuggestionOut | None)
-def detect_clip(payload: ClipEventIn, db: Session = Depends(get_db)):
+def detect_clip(payload: ClipEventIn, db: Session = Depends(get_db), user: dict = Depends(current_user)):
+    if user.get("sub") != payload.channel_login.lower():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for this channel")
     return service.detect_and_store(db, payload)
 
 

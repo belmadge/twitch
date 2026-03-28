@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -24,6 +25,12 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
     stripe_price_pro: str | None = None
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self):
+        if self.app_env.lower() == "production" and self.jwt_secret == "change_this_secret":
+            raise ValueError("JWT_SECRET must be changed in production.")
+        return self
 
 
 settings = Settings()

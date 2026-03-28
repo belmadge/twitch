@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_channel_owner
+from fastapi import HTTPException, status
+
+from app.api.deps import current_user, require_channel_owner
 from app.core.database import get_db
 from app.domain.crm.schemas import CampaignCreate, CampaignOut, ViewerEventIn, ViewerOut
 from app.domain.crm.service import CrmService
@@ -11,7 +13,9 @@ service = CrmService()
 
 
 @router.post("/viewer-event", response_model=ViewerOut)
-def viewer_event(payload: ViewerEventIn, db: Session = Depends(get_db)):
+def viewer_event(payload: ViewerEventIn, db: Session = Depends(get_db), user: dict = Depends(current_user)):
+    if user.get("sub") != payload.channel_login.lower():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for this channel")
     return service.register_viewer_event(db, payload)
 
 
